@@ -1,52 +1,44 @@
-# Starter pipeline with SonarCloud integration
-
 trigger:
 - main
 
 pool:
-  vmImage: ubuntu-latest
-
-variables:
-  pythonVersion: '3.6'
+  vmImage: 'ubuntu-latest'
+# pool:
+#   name: Self-Hosted
 
 steps:
-# Step 1: Set Fetch Depth to override shallow fetch and enable fetching blame information
-- checkout: self
-  fetchDepth: 0
-  
-# Step 2: Prepare Analysis Configuration
-- task: SonarCloudPrepare@1
-  inputs:
-    SonarCloud: 'SonarCloud'
-    organization: 'nexadeepls'
-    scannerMode: 'CLI'
-    configMode: 'manual'
-    cliProjectKey: 'nexadeepls_CDC'
-    cliProjectName: 'CDC'
-  displayName: 'Prepare SonarCloud Analysis'
-
-# Build and test steps
 - task: UsePythonVersion@0
   inputs:
-    versionSpec: '$(pythonVersion)'
-  displayName: 'Use Python $(pythonVersion)'
+    versionSpec: '3.6'
+    addToPath: true
+    architecture: 'x64'
 
 - script: |
     python -m pip install --upgrade pip
     pip install -r requirements.txt
-    pip install pytest pytest-cov
   displayName: 'Install dependencies'
 
 - script: |
-    pytest --cov=. --cov-report=xml tests/
-  displayName: 'Run tests with coverage'
+    pytest tests/ --junitxml=junit/test-results.xml
+  displayName: 'Run tests'
 
-# Step 3: Run Code Analysis (after build steps)
-- task: SonarCloudAnalyze@1
-  displayName: 'Run SonarCloud Code Analysis'
-
-# Step 4: Publish Quality Gate Result
-- task: SonarCloudPublish@1
+- task: PublishTestResults@2
   inputs:
-    pollingTimeoutSec: '300'
-  displayName: 'Publish SonarCloud Quality Gate Result'
+    testResultsFiles: 'junit/test-results.xml'
+    testRunTitle: 'Pytest Results'
+
+# SonarQube Cloud
+- checkout: self
+  fetchDepth: 0
+
+- task: SonarCloudPrepare@3
+  inputs:
+    SonarQube: 'SonarQube Cloud'
+    organization: 'nexadeepls'
+    scannerMode: 'cli'
+    cliScannerVersion: '6.2.1.4610'
+    configMode: 'manual'
+    cliProjectKey: 'nexadeepls_CDC'
+    cliProjectName: 'CDC'
+    cliSources: '.'
+  displayName: 'Prepare SonarCloud Analysis'
