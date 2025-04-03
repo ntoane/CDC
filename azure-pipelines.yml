@@ -1,4 +1,4 @@
-# Starter pipeline with SonarQube integration
+# Starter pipeline with SonarCloud integration
 
 trigger:
 - main
@@ -15,15 +15,15 @@ steps:
   fetchDepth: 0
   
 # Step 2: Prepare Analysis Configuration
-- task: SonarQubePrepare@5
+- task: SonarCloudPrepare@1
   inputs:
-    SonarQube: 'SonarQube Cloud'
+    SonarCloud: 'SonarCloud'
     organization: 'nexadeepls'
     scannerMode: 'CLI'
     configMode: 'manual'
     cliProjectKey: 'nexadeepls_CDC'
     cliProjectName: 'CDC'
-  displayName: 'Prepare SonarQube Analysis'
+  displayName: 'Prepare SonarCloud Analysis'
 
 # Build and test steps
 - task: UsePythonVersion@0
@@ -42,11 +42,11 @@ steps:
   displayName: 'Run tests with coverage'
 
 # Step 3: Run Code Analysis (after build steps)
-- task: SonarQubeAnalyze@5
-  displayName: 'Run SonarQube Code Analysis'
+- task: SonarCloudAnalyze@1
+  displayName: 'Run SonarCloud Code Analysis'
 
 # Step 4: Publish Quality Gate Result
-- task: SonarQubePublish@5
+- task: SonarCloudPublish@1
   inputs:
     pollingTimeoutSec: '300'
-  displayName: 'Publish SonarQube Quality Gate Result'
+  displayName: 'Publish SonarCloud Quality Gate Result'
