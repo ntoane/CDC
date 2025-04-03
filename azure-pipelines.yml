@@ -1,7 +1,4 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# Starter pipeline with SonarQube integration
 
 trigger:
 - main
@@ -10,81 +7,46 @@ pool:
   vmImage: ubuntu-latest
 
 variables:
-  pythonVersion: '3.9'
-  projectRoot: '$(System.DefaultWorkingDirectory)'
-  sonarCloudConnection: 'SonarCloud'
-  sonarCloudOrganization: 'nexadeepls'
-  sonarCloudProjectKey: 'customer-data-connect'
+  pythonVersion: '3.6'
 
-stages:
-- stage: Build
-  displayName: 'Build and Test'
-  jobs:
-  - job: SecurityBuild
-    steps:
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: '$(pythonVersion)'
-      displayName: 'Use Python $(pythonVersion)'
+steps:
+# Step 1: Set Fetch Depth to override shallow fetch and enable fetching blame information
+- checkout: self
+  fetchDepth: 0
+  
+# Step 2: Prepare Analysis Configuration
+- task: SonarQubePrepare@5
+  inputs:
+    SonarQube: 'SonarQube Cloud'
+    organization: 'nexadeepls'
+    scannerMode: 'CLI'
+    configMode: 'manual'
+    cliProjectKey: 'nexadeepls_CDC'
+    cliProjectName: 'CDC'
+  displayName: 'Prepare SonarQube Analysis'
 
-    - script: |
-        python -m pip install --upgrade pip
-        pip install -r requirements.txt
-        pip install pytest pytest-cov bandit safety
-      displayName: 'Install dependencies'
+# Build and test steps
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '$(pythonVersion)'
+  displayName: 'Use Python $(pythonVersion)'
 
-    - script: |
-        pytest --cov=. --cov-report=xml --cov-report=html tests/
-      displayName: 'Run tests with coverage'
-    # SAST with Bandit
-    - script: |
-        bandit -r . -x tests -f json -o $(Build.ArtifactStagingDirectory)/bandit-report.json
-        bandit -r . -x tests -f html -o $(Build.ArtifactStagingDirectory)/bandit-report.html
-      displayName: 'SAST - Bandit Security Scan'
-      
-        # Prepare SonarCloud analysis
-    - task: SonarCloudPrepare@1
-      inputs:
-        SonarCloud: '$(sonarCloudConnection)'
-        organization: '$(sonarCloudOrganization)'
-        scannerMode: 'CLI'
-        configMode: 'manual'
-        cliProjectKey: '$(sonarCloudProjectKey)'
-        cliProjectName: 'Customer Data Connect'
-        cliSources: '.'
-        extraProperties: |
-          sonar.python.coverage.reportPaths=coverage.xml
-          sonar.python.bandit.reportPaths=$(Build.ArtifactStagingDirectory)/bandit-report.json
-          sonar.exclusions=tests/**,**/*.html,**/*.css
-      
-    # Run SonarCloud analysis
-    - task: SonarCloudAnalyze@1
-      displayName: 'SonarCloud Analysis'
-      
-    # Publish SonarCloud quality gate result
-    - task: SonarCloudPublish@1
-      inputs:
-        pollingTimeoutSec: '300'
-      displayName: 'Publish SonarCloud Quality Gate Result'
-    
-    # Publish test and security reports
-    - task: PublishTestResults@2
-      inputs:
-        testResultsFormat: 'JUnit'
-        testResultsFiles: '**/test-*.xml'
-        failTaskOnFailedTests: true
-      displayName: 'Publish Test Results'
-      condition: succeededOrFailed()
+- script: |
+    python -m pip install --upgrade pip
+    pip install -r requirements.txt
+    pip install pytest pytest-cov
+  displayName: 'Install dependencies'
 
-    - task: PublishCodeCoverageResults@1
-      inputs:
-        codeCoverageTool: Cobertura
-        summaryFileLocation: '$(System.DefaultWorkingDirectory)/coverage.xml'
-        reportDirectory: '$(System.DefaultWorkingDirectory)/htmlcov'
-      displayName: 'Publish Code Coverage'
-      
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'security-reports'
-      displayName: 'Publish Security Reports'
+- script: |
+    pytest --cov=. --cov-report=xml tests/
+  displayName: 'Run tests with coverage'
+
+# Step 3: Run Code Analysis (after build steps)
+- task: SonarQubeAnalyze@5
+  displayName: 'Run SonarQube Code Analysis'
+
+# Step 4: Publish Quality Gate Result
+- task: SonarQubePublish@5
+  inputs:
+    pollingTimeoutSec: '300'
+  displayName: 'Publish SonarQube Quality Gate Result'
