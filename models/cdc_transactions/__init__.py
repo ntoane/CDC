@@ -2,10 +2,10 @@ import json
 import os
 import logging
 from resources.utilities.database.oracle import exadata_db
+from resources.utilities.sms_service import sms_service
 from resources.static.response_templates import EXECUTION_FAIL
 import uuid
 from resources.utilities.sms_service import sms_logger
-from resources.utilities.sms_sender import SMS
 
 
 class CDCTransactions:
@@ -22,28 +22,35 @@ class CDCTransactions:
         try:
             # Record the request
             request_id = str(uuid.uuid4())
-            insert_query = f"""
+            insert_query = """
                 INSERT INTO TRANSACTION_REQUESTS 
                 (REQUEST_UID, MSISDN, REQUEST_TYPE, CREATED_ON) 
                 VALUES 
-                ('{request_id}', '{msisdn}', 'AIRTIME_TRANSFER', SYSTIMESTAMP)
+                (:request_id, :msisdn, 'AIRTIME_TRANSFER', SYSTIMESTAMP)
             """
-            self.execute_query(insert_query, fetch_data=False)
+            params = {
+                'request_id': request_id,
+                'msisdn': msisdn
+            }
+            self.execute_query(insert_query, params=params, fetch_data=False)
             
             # Query to get the last 5 airtime transfers
-            query = f"""
+            query = """
                 SELECT *
                 FROM (
                     SELECT * 
                     FROM AIRTIME_TRANSFER 
-                    WHERE OC_SERVED_MSISDN_NORM = '{msisdn}'
+                    WHERE OC_SERVED_MSISDN_NORM = :msisdn
                     ORDER BY OC_RECORDTIMESTAMP DESC
                 )
                 WHERE ROWNUM <= 5
             """
+            params = {
+                'msisdn': msisdn
+            }
             
             # Execute query and get results directly
-            airtime_transfers = self.execute_query(query, fetch_data=True)
+            airtime_transfers = self.execute_query(query, params=params, fetch_data=True)
             
             if not airtime_transfers:
                 return []
@@ -60,13 +67,17 @@ class CDCTransactions:
             # Update transaction record with response
             if sms_items:
                 sms_message = "\n".join([item["message"] for item in sms_items])
-                update_query = f"""
+                update_query = """
                     UPDATE TRANSACTION_REQUESTS
-                    SET RESPONSE_TEXT = '{sms_message}',
+                    SET RESPONSE_TEXT = :sms_message,
                         PROCESSED_ON = SYSTIMESTAMP
-                    WHERE REQUEST_UID = '{request_id}'
+                    WHERE REQUEST_UID = :request_id
                 """
-                self.execute_query(update_query, fetch_data=False)
+                params = {
+                    'request_id': request_id,
+                    'sms_message': sms_message
+                }
+                self.execute_query(update_query, params=params, fetch_data=False)
                 
             return sms_items
         except Exception as e:
@@ -77,27 +88,34 @@ class CDCTransactions:
     def get_bundle_purchases(self, msisdn: str):
         try:
             request_id = str(uuid.uuid4())
-            insert_query = f"""
+            insert_query = """
                 INSERT INTO TRANSACTION_REQUESTS 
                 (REQUEST_UID, MSISDN, REQUEST_TYPE, CREATED_ON) 
                 VALUES 
-                ('{request_id}', '{msisdn}', 'BUNDLE_PURCHASE', SYSTIMESTAMP)
+                (:request_id, :msisdn, 'BUNDLE_PURCHASE', SYSTIMESTAMP)
             """
-            self.execute_query(insert_query, fetch_data=False)
+            params = {
+                'request_id': request_id,
+                'msisdn': msisdn
+            }
+            self.execute_query(insert_query, params=params, fetch_data=False)
         
             # Query to get the last 5 bundle purchases for the given MSISDN
-            query = f"""
+            query = """
                 SELECT *
                 FROM (
                     SELECT * 
                     FROM BUNDLE_PURCHASE 
-                    WHERE OC_SERVED_MSISDN_NORM = '{msisdn}'
+                    WHERE OC_SERVED_MSISDN_NORM = :msisdn
                     ORDER BY OC_RECORDTIMESTAMP DESC
                 )
                 WHERE ROWNUM <= 5
             """
+            params = {
+                'msisdn': msisdn
+            }
 
-            bundle_purchase = self.execute_query(query, fetch_data=True)
+            bundle_purchase = self.execute_query(query, params=params, fetch_data=True)
 
             if not bundle_purchase:
                 return []
@@ -120,13 +138,17 @@ class CDCTransactions:
             # If successful, update the record with response
             if sms_items:
                 sms_message = "\n".join([item["message"] for item in sms_items])
-                update_query = f"""
+                update_query = """
                     UPDATE TRANSACTION_REQUESTS
-                    SET RESPONSE_TEXT = '{sms_message}',
+                    SET RESPONSE_TEXT = :sms_message,
                         PROCESSED_ON = SYSTIMESTAMP
-                    WHERE REQUEST_UID = '{request_id}'
+                    WHERE REQUEST_UID = :request_id
                 """
-                self.execute_query(update_query, fetch_data=False)
+                params = {
+                    'request_id': request_id,
+                    'sms_message': sms_message
+                }
+                self.execute_query(update_query, params=params, fetch_data=False)
         
             return sms_items
         except Exception as e:
@@ -137,27 +159,34 @@ class CDCTransactions:
     def get_call_records(self, msisdn: str):
         try:
             request_id = str(uuid.uuid4())
-            insert_query = f"""
+            insert_query = """
                 INSERT INTO TRANSACTION_REQUESTS 
                 (REQUEST_UID, MSISDN, REQUEST_TYPE, CREATED_ON) 
                 VALUES 
-                ('{request_id}', '{msisdn}', 'CALL_RECORDS', SYSTIMESTAMP)
+                (:request_id, :msisdn, 'CALL_RECORDS', SYSTIMESTAMP)
             """
-            self.execute_query(insert_query, fetch_data=False)
+            params = {
+                'request_id': request_id,
+                'msisdn': msisdn
+            }
+            self.execute_query(insert_query, params=params, fetch_data=False)
             
             # Query to get the last 5 call records for the given MSISDN
-            query = f"""
+            query = """
                 SELECT *
                 FROM (
                     SELECT * 
                     FROM CALL_RECORDS 
-                    WHERE OC_SERVED_MSISDN_NORM = '{msisdn}'
+                    WHERE OC_SERVED_MSISDN_NORM = :msisdn
                     ORDER BY OC_RECORDTIMESTAMP DESC
                 )
                 WHERE ROWNUM <= 5
             """
+            params = {
+                'msisdn': msisdn
+            }
             
-            call_records = self.execute_query(query, fetch_data=True)
+            call_records = self.execute_query(query, params=params, fetch_data=True)
 
             if not call_records:
                 return []
@@ -174,13 +203,17 @@ class CDCTransactions:
                 # If successful, update the record with response
             if sms_items:
                 sms_message = "\n".join([item["message"] for item in sms_items])
-                update_query = f"""
+                update_query = """
                     UPDATE TRANSACTION_REQUESTS
-                    SET RESPONSE_TEXT = '{sms_message}',
+                    SET RESPONSE_TEXT = :sms_message,
                         PROCESSED_ON = SYSTIMESTAMP
-                    WHERE REQUEST_UID = '{request_id}'
+                    WHERE REQUEST_UID = :request_id
                 """
-                self.execute_query(update_query, fetch_data=False)
+                params = {
+                    'request_id': request_id,
+                    'sms_message': sms_message
+                }
+                self.execute_query(update_query, params=params, fetch_data=False)
                 
             return sms_items
         except Exception as e:
@@ -206,11 +239,15 @@ class CDCTransactions:
                 return {
                     "success": False,
                     "message": "Empty or invalid MSISDN provided"
-                }   
+                }
+                
             # Send the SMS
-            result = SMS.send_sms(msisdn,sms_message)
+            result = sms_service.send_message(
+                to=msisdn,
+                body=sms_message
+            )
             
-            # Log the result
+             # Log the result
             if isinstance(result, dict) and result == {'success': True}:
                 sms_logger.info(f"Successfully sent SMS to {msisdn}")
                 return{
@@ -271,7 +308,7 @@ class CDCTransactions:
             return f"{seconds}sec"
     
     @staticmethod
-    def execute_query(query, fetch_data=False):
+    def execute_query(query, params=None, fetch_data=False):
         """
         Execute a SQL query and handle committing or fetching data as appropriate.
         
@@ -289,7 +326,10 @@ class CDCTransactions:
         try:
             conn = exadata_db.get_connection_handle()
             cursor = conn.cursor()
-            cursor.execute(query)
+            if params:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             
             if fetch_data:
                 # For SELECT queries - fetch data and return as list of dictionaries

@@ -1,8 +1,6 @@
 import os
 import config
 
-# print (os.environ)
-
 from flask import Flask
 from resources.utilities.database.oracle import exadata_db
 
