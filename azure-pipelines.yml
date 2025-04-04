@@ -52,6 +52,9 @@ stages:
       - task: SonarQubeAnalyze@7
         displayName: 'Run analysis on SonarQube'
         timeoutInMinutes: 15
+        
+      - checkout: self
+        fetchDepth: 0
 
       # - task: WhiteSource@21
       #   displayName: 'Mend Software Composisiton Analysis'
