@@ -1,44 +1,76 @@
+# Author: Bokang Thoola
+# Copyright: Vodacom Lesotho (pty) ltd
+# Version: 0.1.0
+# 12 April 2024
+# Azure Pipeline for Maven Project
+
+#-------------------------- Description ------------------------------------
+# This is template pipeline with all the stages and jobs we need           #
+# The pipeline start is triggered by a git repository commit               #
+# Its followed by a list of analysis steps, Code Quality Analysis,         #
+# Software Composition Analysis, Static Application Security Testing(SAST) #
+# The Build step
+# The Component Testing stage
+# Store the artifact in the Artifact Repository
+# Deploy The artifact in various environments and do capacity and security
+# testing specifically  Dynamic Application Security Testing( DAST)
+
 trigger:
 - main
 
-pool:
-  vmImage: 'ubuntu-latest'
-# pool:
-#   name: Self-Hosted
 
-steps:
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '3.6'
-    addToPath: true
-    architecture: 'x64'
 
-- script: |
-    python -m pip install --upgrade pip
-    pip install -r requirements.txt
-  displayName: 'Install dependencies'
 
-- script: |
-    pytest tests/ --junitxml=junit/test-results.xml
-  displayName: 'Run tests'
+stages:
+ - stage: 'Test'
+   displayName: 'Test'
+   jobs:
+    - job: 'Test'
+      displayName: 'Test Job'
+      pool:
+        vmImage: 'ubuntu-latest'
+      
 
-- task: PublishTestResults@2
-  inputs:
-    testResultsFiles: 'junit/test-results.xml'
-    testRunTitle: 'Pytest Results'
+ - stage: 'Analysis'
+   displayName: 'Code Analysis'
+   jobs:
+    - job: 'Analysis'
+      displayName: 'Code Analysis Job'
+      pool:
+        vmImage: 'ubuntu-latest'
+      steps:
+      
+      - task: SonarQubePrepare@7
+        displayName: 'Sonarqube Project Connection'
+        inputs:
+          SonarQube: 'SonarQube Cloud'
+          organization: 'nexadeepls'
+          scannerMode: 'CLI'
+          configMode: 'manual'
+          cliProjectKey: 'nexadeepls_CDC'
+          cliProjectName: 'CDC'
+      - task: SonarQubeAnalyze@7
+        displayName: 'Run analysis on SonarQube'
+        timeoutInMinutes: 15
 
-# SonarQube Cloud
-- checkout: self
-  fetchDepth: 0
+      # - task: WhiteSource@21
+      #   displayName: 'Mend Software Composisiton Analysis'
+        
+  
+      - task: SonarQubePublish@7
+        displayName: 'Publish SAST and CQA results'
+        inputs:
+          pollingTimeoutSec: '300'
 
-- task: SonarCloudPrepare@3
-  inputs:
-    SonarQube: 'SonarQube Cloud'
-    organization: 'nexadeepls'
-    scannerMode: 'cli'
-    cliScannerVersion: '6.2.1.4610'
-    configMode: 'manual'
-    cliProjectKey: 'nexadeepls_CDC'
-    cliProjectName: 'CDC'
-    cliSources: '.'
-  displayName: 'Prepare SonarCloud Analysis'
+ - stage: 'Build'
+   displayName: 'Build'
+   jobs:
+    - job: 'Build'
+      displayName: 'Build Job'
+      pool:
+        vmImage: 'ubuntu-latest'
+    
+
+
+
+

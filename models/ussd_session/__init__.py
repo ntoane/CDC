@@ -1,7 +1,7 @@
 """
 Manage ussd_session state and state transitions
 """
-# import cx_Oracle
+
 import logging
 from dataclasses import dataclass
 from resources.static.response_templates import EXECUTION_SUCCESS, EXECUTION_FAIL

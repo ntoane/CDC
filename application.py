@@ -2,9 +2,9 @@ import os
 import config
 print(os.environ)
 # API
-#from views import create_app
+from views import create_app
 
-#application = create_app()
+application = create_app()
 
 if __name__ == '__main__':
     

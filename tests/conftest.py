@@ -1,22 +1,19 @@
 import pytest
 import sys
 import os
-import config
 from unittest.mock import patch, MagicMock
 
 # Add the parent directory to sys.path if needed
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Mock the os.environ to simulate environment variables for testing
-# os.environ["EXADATA_DB_USERNAME"] = "test_user"
 # Mock the dotenv module
-# mock_dotenv = MagicMock()
-# mock_dotenv.load_dotenv = MagicMock()
-# sys.modules['dotenv'] = mock_dotenv
+mock_dotenv = MagicMock()
+mock_dotenv.load_dotenv = MagicMock()
+sys.modules['dotenv'] = mock_dotenv
 
-# # Mock oracledb before any imports
-# mock_oracledb = MagicMock()
-# sys.modules['oracledb'] = mock_oracledb
+# Mock oracledb before any imports
+mock_oracledb = MagicMock()
+sys.modules['cx_Oracle'] = mock_oracledb
 
 # Now it's safe to import application modules
 from views import create_app

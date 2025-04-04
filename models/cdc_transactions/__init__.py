@@ -2,7 +2,6 @@ import json
 import os
 import logging
 from resources.utilities.database.oracle import exadata_db
-# from resources.utilities.sms_service import sms_service
 from resources.static.response_templates import EXECUTION_FAIL
 import uuid
 from resources.utilities.sms_service import sms_logger

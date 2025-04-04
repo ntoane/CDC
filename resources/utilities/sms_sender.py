@@ -5,13 +5,11 @@ from resources.static.response_templates import INPUT_INCOMPLETE, EXECUTION_SUCC
 
 class SMS:
     def __init__(self):
-        # Check if we're in simulation mode (no actual SMS sent)
-        # self.simulation_mode = os.environ.get('SMS_SIMULATION_MODE', 'false').lower() == 'true'
-        self.simulation_mode = True  # For testing purposes, always in simulation mode
+        self.simulation_mode = False  # For testing purposes, always in simulation mode
 
     def send_sms(self, msisdn, message):  
         if self.simulation_mode:
-            return {'success': True, 'simulated': True, 'message_id': 'simulation-0000'}
+            return EXECUTION_SUCCESS
         
         url=os.environ["SMS_ENGINE_ENDPOINT"]
         payload = json.dumps({

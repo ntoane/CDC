@@ -1,7 +1,4 @@
 import pytest
-
-# print(os.environ)
-
 import uuid
 from unittest.mock import patch, MagicMock, call
 from datetime import datetime
@@ -9,6 +6,7 @@ from datetime import datetime
 from models.cdc_transactions import CDCTransactions
 from models.ussd_session import USSDSession
 from controllers.ussd_session import USSDSessionController
+from resources.static.response_templates import EXECUTION_SUCCESS
 
 
 # Mock data for testing
@@ -97,49 +95,57 @@ class TestUSSDSessionFlow:
     def test_session_termination_with_fixtures(self, test_client, request_payload, headers, ussd_endpoint):
         """Test USSD session termination using test fixtures"""
         # Setup - Mock the database responses
-        with patch('models.ussd_session.USSDSession.initialize') as mock_init:  # Added initialize mock
-            with patch('models.ussd_session.USSDSession.get_current_state') as mock_get_current:
-                with patch('models.ussd_session.USSDSession.get_next_state') as mock_get_next:
-                    with patch('models.ussd_session.USSDSession.set_next_state') as mock_set_next:
-                        # Configure mocks
-                        mock_init.return_value = {"success": True}  # Added initialize return
-                        mock_get_current.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "current_state": "MAIN_MENU",
-                                "current_state_alias": "N.A",
-                                "current_state_phase": 0,
-                                "msisdn": SAMPLE_MSISDN,
-                                "user_input": "0"
+        with patch('controllers.integration.vxview.systemapi.SystemAPIIntegrationController.get_tariff_type') as mock_get_tariff:
+            with patch('models.ussd_session.USSDSession.initialize') as mock_init:
+                with patch('models.ussd_session.USSDSession.get_current_state') as mock_get_current:
+                    with patch('models.ussd_session.USSDSession.get_next_state') as mock_get_next:
+                        with patch('models.ussd_session.USSDSession.set_next_state') as mock_set_next:
+                            # Configure mocks
+                            mock_get_tariff.return_value = {
+                                "success": True,
+                                "data": {
+                                    "package_type": "PREPAID",
+                                    "tariff_type": "Prepaid",
+                                }
                             }
-                        }
-                        
-                        mock_get_next.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "next_state": "EXIT",
-                                "next_state_message": "Thank you for using CDC service.",
-                                "next_state_input_required": "N",
-                                "next_state_alias": "N.A",
-                                "next_state_phase": 0
+                            mock_init.return_value = {"success": True}  # Added initialize return
+                            mock_get_current.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "current_state": "MAIN_MENU",
+                                    "current_state_alias": "N.A",
+                                    "current_state_phase": 0,
+                                    "msisdn": SAMPLE_MSISDN,
+                                    "user_input": "0"
+                                }
                             }
-                        }
-                        
-                        mock_set_next.return_value = {"success": True}
-                        
-                        # Execute - Send the request to terminate the session
-                        response = test_client.post(
-                            ussd_endpoint,
-                            data=request_payload,
-                            headers=headers
-                        )
-            
-                        # Assert
-                        assert response.status_code == 200
-                        assert b"Thank you for using CDC service" in response.data
-                        assert b"response type='3'" in response.data  # Verify termination response type
+                            
+                            mock_get_next.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "next_state": "EXIT",
+                                    "next_state_message": "Thank you for using CDC service.",
+                                    "next_state_input_required": "N",
+                                    "next_state_alias": "N.A",
+                                    "next_state_phase": 0
+                                }
+                            }
+                            
+                            mock_set_next.return_value = {"success": True}
+                            
+                            # Execute - Send the request to terminate the session
+                            response = test_client.post(
+                                ussd_endpoint,
+                                data=request_payload,
+                                headers=headers
+                            )
+                
+                            # Assert
+                            assert response.status_code == 200
+                            assert b"Thank you for using CDC service" in response.data
+                            assert b"response type='3'" in response.data  # Verify termination response type
 
 
 # CDC Transactions Tests
@@ -150,59 +156,67 @@ class TestCDCTransactions:
     def test_airtime_transfers_integration(self, test_client, request_payload, headers, ussd_endpoint):
         """Integration test for airtime transfers using test fixtures"""
         # Mock session management
-        with patch('models.ussd_session.USSDSession.initialize') as mock_init:
-            with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
-                with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
-                    with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
-                        # Configure session mocks
-                        mock_init.return_value = {"success": True}
-                        mock_current.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "current_state": "MAIN_MENU",
-                                "current_state_alias": "N.A",
-                                "current_state_phase": 0,
-                                "msisdn": SAMPLE_MSISDN,
-                                "user_input": "1"
+        with patch('controllers.integration.vxview.systemapi.SystemAPIIntegrationController.get_tariff_type') as mock_get_tariff:
+            with patch('models.ussd_session.USSDSession.initialize') as mock_init:
+                with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
+                    with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
+                        with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
+                            # Configure session mocks
+                            mock_get_tariff.return_value = {
+                                "success": True,
+                                "data": {
+                                    "package_type": "PREPAID",
+                                    "tariff_type": "Prepaid",
+                                }
                             }
-                        }
-                        mock_next.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "next_state": "AIRTIME_TRANSACTIONS",
-                                "next_state_message": "Your airtime transfer history will be sent to you shortly via SMS.",
-                                "next_state_input_required": "N",
-                                "next_state_alias": "N.A",
-                                "next_state_phase": 0
+                            mock_init.return_value = {"success": True}
+                            mock_current.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "current_state": "MAIN_MENU",
+                                    "current_state_alias": "N.A",
+                                    "current_state_phase": 0,
+                                    "msisdn": SAMPLE_MSISDN,
+                                    "user_input": "1"
+                                }
                             }
-                        }
-                        mock_set.return_value = {"success": True}
+                            mock_next.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "next_state": "AIRTIME_TRANSACTIONS",
+                                    "next_state_message": "Your airtime transfer history will be sent to you shortly via SMS.",
+                                    "next_state_input_required": "N",
+                                    "next_state_alias": "N.A",
+                                    "next_state_phase": 0
+                                }
+                            }
+                            mock_set.return_value = {"success": True}
 
-                        # Mock CDC methods
-                        with patch('models.cdc_transactions.CDCTransactions.get_airtime_transfers') as mock_get_transfers:
-                            with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
-                                # Configure CDC mocks
-                                mock_get_transfers.return_value = [
-                                    {"message": "1) 10/12/2023 15:30 - Transfer of LSL 50.0 to 26653123456"},
-                                    {"message": "2) 11/12/2023 09:15 - Transfer of LSL 100.0 to 26653654321"}
-                                ]
-                                mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
+                            # Mock CDC methods
+                            with patch('models.cdc_transactions.CDCTransactions.get_airtime_transfers') as mock_get_transfers:
+                                with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
+                                    # Configure CDC mocks
+                                    mock_get_transfers.return_value = [
+                                        {"message": "1) 10/12/2023 15:30 - Transfer of LSL 50.0 to 26653123456"},
+                                        {"message": "2) 11/12/2023 09:15 - Transfer of LSL 100.0 to 26653654321"}
+                                    ]
+                                    mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
 
-                                # Execute request
-                                response = test_client.post(
-                                    ussd_endpoint,
-                                    data=request_payload,
-                                    headers=headers
-                                )
+                                    # Execute request
+                                    response = test_client.post(
+                                        ussd_endpoint,
+                                        data=request_payload,
+                                        headers=headers
+                                    )
 
-                                # Assert
-                                assert response.status_code == 200
-                                assert b"Your airtime transfer history will be sent to you shortly via SMS." in response.data
-                                
-                                # Verify CDC methods were called
-                                mock_get_transfers.assert_called_once_with(SAMPLE_MSISDN)
+                                    # Assert
+                                    assert response.status_code == 200
+                                    assert b"Your airtime transfer history will be sent to you shortly via SMS." in response.data
+                                    
+                                    # Verify CDC methods were called
+                                    mock_get_transfers.assert_called_once_with(SAMPLE_MSISDN)
     
     @pytest.mark.parametrize('request_payload', [
         {'msisdn': SAMPLE_MSISDN, 'session_id': '12345', 'phase': 2, 'request_type': 2, 'user_input': '2'}
@@ -210,59 +224,67 @@ class TestCDCTransactions:
     def test_bundle_purchases_integration(self, test_client, request_payload, headers, ussd_endpoint):
         """Integration test for bundle purchases using test fixtures"""
         # Mock session management
-        with patch('models.ussd_session.USSDSession.initialize') as mock_init:
-            with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
-                with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
-                    with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
-                        # Configure session mocks
-                        mock_init.return_value = {"success": True}
-                        mock_current.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "current_state": "MAIN_MENU",
-                                "current_state_alias": "N.A",
-                                "current_state_phase": 0,
-                                "msisdn": SAMPLE_MSISDN,
-                                "user_input": "2"
+        with patch('controllers.integration.vxview.systemapi.SystemAPIIntegrationController.get_tariff_type') as mock_get_tariff:
+            with patch('models.ussd_session.USSDSession.initialize') as mock_init:
+                with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
+                    with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
+                        with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
+                            # Configure session mocks
+                            mock_get_tariff.return_value = {
+                                    "success": True,
+                                    "data": {
+                                        "package_type": "PREPAID",
+                                        "tariff_type": "Prepaid",
+                                    }
+                                }
+                            mock_init.return_value = {"success": True}
+                            mock_current.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "current_state": "MAIN_MENU",
+                                    "current_state_alias": "N.A",
+                                    "current_state_phase": 0,
+                                    "msisdn": SAMPLE_MSISDN,
+                                    "user_input": "2"
+                                }
                             }
-                        }
-                        mock_next.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "next_state": "BUNDLE_PURCHASES",
-                                "next_state_message": "Your bundle purchase history will be sent to you shortly via SMS.",
-                                "next_state_input_required": "N",
-                                "next_state_alias": "N.A",
-                                "next_state_phase": 0
+                            mock_next.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "next_state": "BUNDLE_PURCHASES",
+                                    "next_state_message": "Your bundle purchase history will be sent to you shortly via SMS.",
+                                    "next_state_input_required": "N",
+                                    "next_state_alias": "N.A",
+                                    "next_state_phase": 0
+                                }
                             }
-                        }
-                        mock_set.return_value = {"success": True}
+                            mock_set.return_value = {"success": True}
 
-                        # Mock CDC methods
-                        with patch('models.cdc_transactions.CDCTransactions.get_bundle_purchases') as mock_get_bundles:
-                            with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
-                                # Configure CDC mocks
-                                mock_get_bundles.return_value = [
-                                    {"message": "1) 10/12/2023 15:30 - Data Bundle 1GB - M100.00"},
-                                    {"message": "2) 11/12/2023 09:15 - Voice Bundle 60min - M50.00"}
-                                ]
-                                mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
+                            # Mock CDC methods
+                            with patch('models.cdc_transactions.CDCTransactions.get_bundle_purchases') as mock_get_bundles:
+                                with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
+                                    # Configure CDC mocks
+                                    mock_get_bundles.return_value = [
+                                        {"message": "1) 10/12/2023 15:30 - Data Bundle 1GB - M100.00"},
+                                        {"message": "2) 11/12/2023 09:15 - Voice Bundle 60min - M50.00"}
+                                    ]
+                                    mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
 
-                                # Execute request
-                                response = test_client.post(
-                                    ussd_endpoint,
-                                    data=request_payload,
-                                    headers=headers
-                                )
+                                    # Execute request
+                                    response = test_client.post(
+                                        ussd_endpoint,
+                                        data=request_payload,
+                                        headers=headers
+                                    )
 
-                                # Assert
-                                assert response.status_code == 200
-                                assert b"Your bundle purchase history will be sent to you shortly via SMS" in response.data
-                                
-                                # Verify CDC methods were called
-                                mock_get_bundles.assert_called_once_with(SAMPLE_MSISDN)
+                                    # Assert
+                                    assert response.status_code == 200
+                                    assert b"Your bundle purchase history will be sent to you shortly via SMS" in response.data
+                                    
+                                    # Verify CDC methods were called
+                                    mock_get_bundles.assert_called_once_with(SAMPLE_MSISDN)
     
     @pytest.mark.parametrize('request_payload', [
         {'msisdn': SAMPLE_MSISDN, 'session_id': '12345', 'phase': 2, 'request_type': 2, 'user_input': '3'}
@@ -270,59 +292,67 @@ class TestCDCTransactions:
     def test_call_records_integration(self, test_client, request_payload, headers, ussd_endpoint):
         """Integration test for call records using test fixtures"""
         # Mock session management
-        with patch('models.ussd_session.USSDSession.initialize') as mock_init:
-            with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
-                with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
-                    with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
-                        # Configure session mocks
-                        mock_init.return_value = {"success": True}
-                        mock_current.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "current_state": "MAIN_MENU",
-                                "current_state_alias": "N.A",
-                                "current_state_phase": 0,
-                                "msisdn": SAMPLE_MSISDN,
-                                "user_input": "3"
+        with patch('controllers.integration.vxview.systemapi.SystemAPIIntegrationController.get_tariff_type') as mock_get_tariff:
+            with patch('models.ussd_session.USSDSession.initialize') as mock_init:
+                with patch('models.ussd_session.USSDSession.get_current_state') as mock_current:
+                    with patch('models.ussd_session.USSDSession.get_next_state') as mock_next:
+                        with patch('models.ussd_session.USSDSession.set_next_state') as mock_set:
+                            # Configure session mocks
+                            mock_get_tariff.return_value = {
+                                    "success": True,
+                                    "data": {
+                                        "package_type": "PREPAID",
+                                        "tariff_type": "Prepaid",
+                                    }
+                                }
+                            mock_init.return_value = {"success": True}
+                            mock_current.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "current_state": "MAIN_MENU",
+                                    "current_state_alias": "N.A",
+                                    "current_state_phase": 0,
+                                    "msisdn": SAMPLE_MSISDN,
+                                    "user_input": "3"
+                                }
                             }
-                        }
-                        mock_next.return_value = {
-                            "success": True,
-                            "data": {
-                                "session_uid": "12345",
-                                "next_state": "CALL_RECORDS",
-                                "next_state_message": "Your recent call records will be sent to you shortly via SMS.",
-                                "next_state_input_required": "N",
-                                "next_state_alias": "N.A",
-                                "next_state_phase": 0
+                            mock_next.return_value = {
+                                "success": True,
+                                "data": {
+                                    "session_uid": "12345",
+                                    "next_state": "CALL_RECORDS",
+                                    "next_state_message": "Your recent call records will be sent to you shortly via SMS.",
+                                    "next_state_input_required": "N",
+                                    "next_state_alias": "N.A",
+                                    "next_state_phase": 0
+                                }
                             }
-                        }
-                        mock_set.return_value = {"success": True}
+                            mock_set.return_value = {"success": True}
 
-                        # Mock CDC methods
-                        with patch('models.cdc_transactions.CDCTransactions.get_call_records') as mock_get_calls:
-                            with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
-                                # Configure CDC mocks
-                                mock_get_calls.return_value = [
-                                    {"message": "1) 10/12/2023 15:30 - Call to 26657****96 - 2min 30sec"},
-                                    {"message": "2) 11/12/2023 09:15 - Call to 26658****21 - 5min 10sec"}
-                                ]
-                                mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
+                            # Mock CDC methods
+                            with patch('models.cdc_transactions.CDCTransactions.get_call_records') as mock_get_calls:
+                                with patch('models.cdc_transactions.CDCTransactions.send_sms') as mock_send_sms:
+                                    # Configure CDC mocks
+                                    mock_get_calls.return_value = [
+                                        {"message": "1) 10/12/2023 15:30 - Call to 26657****96 - 2min 30sec"},
+                                        {"message": "2) 11/12/2023 09:15 - Call to 26658****21 - 5min 10sec"}
+                                    ]
+                                    mock_send_sms.return_value = {"success": True, "message": "SMS sent successfully"}
 
-                                # Execute request
-                                response = test_client.post(
-                                    ussd_endpoint,
-                                    data=request_payload,
-                                    headers=headers
-                                )
+                                    # Execute request
+                                    response = test_client.post(
+                                        ussd_endpoint,
+                                        data=request_payload,
+                                        headers=headers
+                                    )
 
-                                # Assert
-                                assert response.status_code == 200
-                                assert b"Your recent call records will be sent to you shortly via SMS" in response.data
-                                
-                                # Verify CDC methods were called
-                                mock_get_calls.assert_called_once_with(SAMPLE_MSISDN)
+                                    # Assert
+                                    assert response.status_code == 200
+                                    assert b"Your recent call records will be sent to you shortly via SMS" in response.data
+                                    
+                                    # Verify CDC methods were called
+                                    mock_get_calls.assert_called_once_with(SAMPLE_MSISDN)
 
     # Unit Tests for CDC Transaction Class Methods
     
@@ -491,35 +521,31 @@ class TestCDCTransactions:
         assert "CALL_RECORDS" in select_call[0][0]
         assert f"OC_SERVED_MSISDN_NORM = '{SAMPLE_MSISDN}'" in select_call[0][0]
     
-    # @patch('resources.utilities.sms_sender.send_sms')
-    # def test_send_sms(self, mock_send_message):
-    #     """Test the SMS formatting and sending"""
-    #     # Setup
-    #     mock_send_message.return_value = {"success": True, "simulated": True}
+    @patch('resources.utilities.sms_sender.SMS.send_sms')
+    def test_send_sms(self, mock_send_message):
+        """Test the SMS formatting and sending"""
+        # Setup
+        mock_send_message.return_value = EXECUTION_SUCCESS
         
-    #     # Prepare test data
-    #     sms_items = [
-    #         {"message": "1) Test message with special chars: $%^&"},
-    #         {"message": "2) Another test with emojis: 😊📱"}
-    #     ]
+        # Prepare test data
+        sms_items = [
+            {"message": "1) Test message with special chars: $%^&"},
+            {"message": "2) Another test with emojis: 😊📱"}
+        ]
         
-    #     # Execute
-    #     cdc = CDCTransactions()
-    #     result = cdc.send_sms(SAMPLE_MSISDN, "TEST MESSAGE HEADER: ", sms_items)
+        # Execute
+        cdc = CDCTransactions()
+        result = cdc.send_sms(SAMPLE_MSISDN, "TEST MESSAGE HEADER: ", sms_items)
         
-    #     # Assert
-    #     assert result is True
-    #     mock_send_message.assert_called_once()
+        # Assert
+        assert result["success"] is True
+        mock_send_message.assert_called_once()
         
-    #     # Check formatting
-    #     call_args = mock_send_message.call_args[1]
-    #     assert call_args["to"] == f"+{SAMPLE_MSISDN}"  # Should add + prefix
-        
-    #     # Check message content
-    #     message_body = call_args["body"]
-    #     assert "TEST MESSAGE HEADER: " in message_body
-    #     assert "1) Test message with special chars" in message_body
-    #     assert "2) Another test" in message_body
+        # Check message content
+        message_body = mock_send_message.call_args[0][1]  # Get second positional argument
+        assert "TEST MESSAGE HEADER: " in message_body
+        assert "1) Test message with special chars" in message_body
+        assert "2) Another test" in message_body
     
     def test_mask_phone_number(self):
         """Test the phone number masking functionality"""
